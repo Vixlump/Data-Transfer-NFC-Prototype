@@ -13,18 +13,26 @@ DIYables_IRcontroller_21 irController(6, 200); // Pin 6, debounce time is 200ms
 
 
 // PIEZO BUZZER
-int BUTTON_PIN = 4; // Arduino pin connected to button's pin
-int BUZZER_PIN = 5; // Arduino pin connected to Buzzer's pin
+  int BUZZER_PIN = 5; // Arduino pin connected to Buzzer's pin
 
-  // notes in the melody:
-  int melody[] = {
-    NOTE_E5, NOTE_E5, NOTE_E5, NOTE_C5, NOTE_E5, NOTE_G5
+  // Notes in the melody:
+  int successMelody[] = {
+    NOTE_E6, NOTE_G6, NOTE_E7, NOTE_C7, NOTE_D7, NOTE_G7
+  };
+  
+  int failMelody[] = {
+    NOTE_E3, NOTE_E3
+  };
+  
+  // Note durations: 4 = quarter note, 8 = eighth note, etc:
+  int successNoteDurations[] = {
+    8, 8, 8, 8, 8, 8
+  };
+  
+  int failNoteDurations[] = {
+    8, 4
   };
 
-  // note durations: 4 = quarter note, 8 = eighth note, etc:
-  int noteDurations[] = {
-    8, 4, 4, 8, 4, 4 
-  };
 
 
 void setup() {
@@ -40,21 +48,36 @@ void setup() {
   irController.begin();
 
   // PIEZO BUZZER
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // set arduino pin to input pull-up mode
-
+  pinMode(BUZZER_PIN, OUTPUT); // Set the buzzer pin as an output
+  
   NFC_setup();
   SERVO_setup();
 }
 
 void loop() {
 
-  ultrasonicSensorReading();
+  if (Serial.available()) {
+        char choice = Serial.read();
+        if (choice == 'I') {
+            ultrasonicSensorReading();
+        } else if (choice == 'R') {
+            Serial.println("Read mode selected. Scan an NFC card...");
+            readCard();
+        } else if (choice == 'W') {
+            Serial.println("Write mode selected. Enter text:");
+            writeCard();
+        } else if (choice == 'A') {
+            Serial.println("Received '1'. Playing success melody...");
+            makeNoise(successMelody, successNoteDurations, sizeof(successNoteDurations) / sizeof(int)); // Call the function to make noise
+        } else if (choice == 'B') {
+            Serial.println("Received '2'. Playing fail melody...");
+            makeNoise(failMelody, failNoteDurations, sizeof(failNoteDurations) / sizeof(int));
+        }
+        
+    }
 
   irSensorReading();
 
-  piezoBuzzerSound();
-
-  NFC_loop();
   SERVO_loop();
 
   delay(10);
@@ -83,6 +106,7 @@ float ultrasonicSensorReading() {
 void irSensorReading(){
   Key21 key = irController.getKey();
   if (key != Key21::NONE) {
+    moto_state = true;
     switch (key) {
       case Key21::KEY_CH_MINUS:
         Serial.println("POWER");
@@ -196,30 +220,19 @@ void irSensorReading(){
   }
 }
 
-void piezoBuzzerSound(){
-  int buttonState = digitalRead(BUTTON_PIN); // read new state
-
-  if (buttonState == LOW) { // button is pressed
-    Serial.println("The button is being pressed");
-    buzzer();
-  }
-}
-
-void buzzer() {
-  // iterate over the notes of the melody:
-  int size = sizeof(noteDurations) / sizeof(int);
-
+void makeNoise(int melody[], int noteDurations[], int size) {
+  // Iterate over the notes of the melody:
   for (int thisNote = 0; thisNote < size; thisNote++) {
-    // to calculate the note duration, take one second divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    // To calculate the note duration, take one second divided by the note type.
+    // e.g., quarter note = 1000 / 4, eighth note = 1000 / 8, etc.
     int noteDuration = 1000 / noteDurations[thisNote];
     tone(BUZZER_PIN, melody[thisNote], noteDuration);
 
-    // to distinguish the notes, set a minimum time between them.
-    // the note's duration + 30% seems to work well:
+    // To distinguish the notes, set a minimum time between them.
+    // The note's duration + 30% seems to work well:
     int pauseBetweenNotes = noteDuration * 1.30;
     delay(pauseBetweenNotes);
-    // stop the tone playing:
+    // Stop the tone playing:
     noTone(BUZZER_PIN);
   }
 }

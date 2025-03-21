@@ -9,6 +9,9 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); //Create MFRC522 instance
 
+bool nfc_status = false;
+bool nfc_mode = false; //false = read, true = write
+String write_data = "0000";
 
 String readNFCData() {
     String result = "";
@@ -19,7 +22,7 @@ String readNFCData() {
         MFRC522::StatusCode status = mfrc522.MIFARE_Read(block, buffer, &size);
 
         if (status != MFRC522::STATUS_OK) {
-            Serial.print("Read failed at block ");
+            Serial.print("NFC: Read failed at block ");
             Serial.print(block);
             Serial.print(": ");
             Serial.println(mfrc522.GetStatusCodeName(status));
@@ -52,7 +55,7 @@ void writeNFCData(String data) {
     int requiredBlocks = (totalLength + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
     if (START_BLOCK + requiredBlocks - 1 > END_BLOCK) {
-        Serial.println("Error: Text is too long for NTAG213 storage.");
+        Serial.println("NFC: ERROR: Text is too long for NTAG213 storage.");
         return;
     }
 
@@ -69,7 +72,7 @@ void writeNFCData(String data) {
         MFRC522::StatusCode status = mfrc522.MIFARE_Write(block, buffer, BLOCK_SIZE);
 
         if (status != MFRC522::STATUS_OK) {
-            Serial.print("Write failed at block ");
+            Serial.print("NFC: WRITE FAILED AT BLOCK ");
             Serial.print(block);
             Serial.print(": ");
             Serial.println(mfrc522.GetStatusCodeName(status));
@@ -77,7 +80,7 @@ void writeNFCData(String data) {
         }
     }
 
-    Serial.println("Write successful!");
+    Serial.println("NFC: CARD WRITE SUCCESS");
 }
 
 void readCard() {
@@ -87,11 +90,11 @@ void readCard() {
             continue;
         }
 
-        Serial.println("Card detected! Reading data...");
+        Serial.println("NFC: CARD DETECTED READING DATA");
         
         data_from_card = readNFCData();
 
-        Serial.print("Data Read: ");
+        Serial.print("NFC: Data Read: ");
         Serial.println(data_from_card);
         
         mfrc522.PICC_HaltA();
@@ -108,11 +111,11 @@ void writeCard() {
             inputData.trim();
 
             if (inputData.length() == 0) {
-                Serial.println("Error: No input provided.");
+                Serial.println("NFC: ERROR: No input provided.");
                 return;
             }
 
-            Serial.println("Scan an NFC card to write...");
+            Serial.println("NFC: SCAN AN NFC CARD");
 
             while (true) {
                 if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
@@ -120,7 +123,7 @@ void writeCard() {
                 }
                 
 
-                Serial.println("Card detected! Writing data...");
+                Serial.println("NFC: CARD DETECTED WRITING DATA");
                 writeNFCData(inputData);
 
                 mfrc522.PICC_HaltA();
@@ -136,26 +139,8 @@ void NFC_setup() {
     SPI.begin();
     mfrc522.PCD_Init();
 
-    Serial.println("Select mode:");
-    Serial.println("1 - Read Data");
-    Serial.println("2 - Write Data");
+    Serial.println("NFC: Select mode:");
+    Serial.println("NFC: R - Read Data");
+    Serial.println("NFC: W - Write Data");
 
-}
-
-
-
-void NFC_loop() {
-     
-    if (Serial.available()) {
-        char choice = Serial.read();
-        if (choice == '1') {
-            Serial.println("Read mode selected. Scan an NFC card...");
-            readCard();
-        } else if (choice == '2') {
-            Serial.println("Write mode selected. Enter text:");
-            writeCard();
-        } else if (choice == '3') {
-          
-        }
-    }
 }

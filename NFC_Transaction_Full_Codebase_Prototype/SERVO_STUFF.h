@@ -8,7 +8,7 @@ Servo myservo;  // create servo object to control a servo
 
 int pos = 0;    // variable to store the servo position
 
-bool moto_state =false;
+bool moto_state = false;
 
 void SERVO_setup() {
 
@@ -36,6 +36,7 @@ void SERVO_loop() {
     delay(1);                       // waits 15ms for the servo to reach the position
 
   }
+  moto_state = false;
   }
 
 }

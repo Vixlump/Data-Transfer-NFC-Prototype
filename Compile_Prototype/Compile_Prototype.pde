@@ -6,6 +6,8 @@ String currentAction = "Waiting for input...";  // Variable to store the current
 float distance = 0;  // Variable to store the parsed distance
 boolean showSuccessMessage = false;  // Flag to control the success message display
 long successMessageStartTime = 0;  // Timer for the success message
+long lastDistanceRequestTime = 0;  // Timer to control how often we request distance
+boolean menuActive = false;  // Flag to track if the menu is active
 
 void setup() {
   size(400, 300);  // Set the size of the window
@@ -37,30 +39,48 @@ void draw() {
     drawIndicator();
     drawDistanceIndicator();
   }
+
+  // Send 'I' to Arduino every second if in the MENU state
+  if (state.equals("MENU")) {
+    if (!menuActive) {
+      menuActive = true;  // Set the menu as active
+      lastDistanceRequestTime = millis();  // Reset the timer
+    }
+    // Send 'I' every 1000 milliseconds (1 second)
+    if (millis() - lastDistanceRequestTime > 1000) {
+      myPort.write('I');  // Send 'I' to Arduino to request distance
+      lastDistanceRequestTime = millis();  // Reset the timer
+    }
+  } else {
+    menuActive = false;  // Set the menu as inactive
+  }
 }
 
 void serialEvent(Serial myPort) {
   String input = myPort.readStringUntil('\n').trim();  // Read the serial input
+  
   if (input != null) {
+    emergencyEscape(input);
     println("Received: " + input);  // Print the received input for debugging
-
     // Parse the distance from the input
     if (input.startsWith("Distance:")) {
       distance = parseDistance(input);  // Extract the distance value
       println("Parsed Distance: " + distance + " cm");
 
-      // Only proceed if the distance is under 50 cm
-      if (distance < 50) {
-        println("Distance is under 50 cm. Ready for commands.");
-      } else {
-        println("Distance is over 50 cm. Ignoring commands.");
+      // Only proceed if the distance is under 50 cm and in the MENU state
+      if (state.equals("MENU")) {
+        if (distance < 50) {
+          println("Distance is under 50 cm. Ready for commands.");
+        } else {
+          println("Distance is over 50 cm. Ignoring commands.");
+        }
       }
     } else if (input.equals("Write successful!")) {
       // Show the success message for 5 seconds
       showSuccessMessage = true;
       successMessageStartTime = millis();  // Record the start time
-    } else if (distance < 50) {
-      // Handle commands only if distance is under 50 cm
+    } else if (state.equals("MENU") && distance < 50) {
+      // Handle commands only if distance is under 50 cm and in the MENU state
       handleMenuInput(input);
     }
   }
@@ -87,12 +107,19 @@ void handleMenuInput(String input) {
     state = "TRANSFER";
     currentAction = "Transfer";
     transfer();
-  } else if (input.equals("RETURN")) {
-    state = "MENU";  // Return to the menu state
+  } else if (input.equals("RETURN")) {  // Ensure this matches exactly
+    state = "MENU";  // Return to the menu state (corrected typo)
     currentAction = "Waiting for input...";
   } else {
     println("Invalid command: " + input);
   }
+}
+
+void emergencyEscape(String input) {
+    if (input.equals("RETURN")) {  // Ensure this matches exactly
+      state = "MENU";  // Return to the menu state (corrected typo)
+      currentAction = "Waiting for input...";
+    }
 }
 
 // Function to draw the current state indicator
@@ -138,10 +165,23 @@ void drawSuccessMessage() {
   text("Account Created", width / 2, height / 2);  // Display the message
 }
 
+String generateRandomLetters() {
+  String letters = "abcdefghijklmnopqrstuvwxyz";  // All possible letters
+  String randomLetters = "";
+  for (int i = 0; i < 4; i++) {
+    int randomIndex = int(random(letters.length()));  // Pick a random index
+    randomLetters += letters.charAt(randomIndex);  // Append the random letter
+  }
+  return randomLetters;
+}
+
 // Placeholder function for making an account
 void makeAccount() {
   println("Make Account selected");
   // Add your logic here to create a new account
+  String gen_account_name = "W " + generateRandomLetters();
+  myPort.write(gen_account_name);
+  
 }
 
 // Placeholder function for viewing an account
