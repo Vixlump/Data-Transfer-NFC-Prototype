@@ -79,14 +79,17 @@ void loop() {
             Serial.println("Received '2'. Playing fail melody...");
             makeNoise(failMelody, failNoteDurations, sizeof(failNoteDurations) / sizeof(int));
             irController.begin();
+        } else if (choice == 'M') {
+            moto_state = true;
         }
         
     }
   if (!Serial.available()) {
     irSensorReading();
   }
-  SERVO_loop();
 
+  SERVO_loop();
+  
   delay(10);
 }
 
