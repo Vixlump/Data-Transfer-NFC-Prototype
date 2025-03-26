@@ -11,6 +11,8 @@ float duration_us, distance_cm;
 // IR SENSOR
 DIYables_IRcontroller_21 irController(6, 200); // Pin 6, debounce time is 200ms
 
+Key21 key;
+
 
 // PIEZO BUZZER
   int BUZZER_PIN = 5; // Arduino pin connected to Buzzer's pin
@@ -56,7 +58,10 @@ void setup() {
 
 void loop() {
 
+  
+
   if (Serial.available()) {
+        irSensorReading();
         char choice = Serial.read();
         if (choice == 'I') {
             ultrasonicSensorReading();
@@ -69,15 +74,17 @@ void loop() {
         } else if (choice == 'A') {
             Serial.println("Received '1'. Playing success melody...");
             makeNoise(successMelody, successNoteDurations, sizeof(successNoteDurations) / sizeof(int)); // Call the function to make noise
+            irController.begin();
         } else if (choice == 'B') {
             Serial.println("Received '2'. Playing fail melody...");
             makeNoise(failMelody, failNoteDurations, sizeof(failNoteDurations) / sizeof(int));
+            irController.begin();
         }
         
     }
-
-  irSensorReading();
-
+  if (!Serial.available()) {
+    irSensorReading();
+  }
   SERVO_loop();
 
   delay(10);
@@ -104,8 +111,9 @@ float ultrasonicSensorReading() {
 }
 
 void irSensorReading(){
-  Key21 key = irController.getKey();
+  key = irController.getKey();
   if (key != Key21::NONE) {
+    //Serial.println("IR_HIT");
     moto_state = true;
     switch (key) {
       case Key21::KEY_CH_MINUS:
@@ -217,10 +225,12 @@ void irSensorReading(){
         Serial.println("WARNING: undefined key:");
         break;
     }
+    //Serial.println("IR_END");
   }
 }
 
 void makeNoise(int melody[], int noteDurations[], int size) {
+  Serial.println("NOISE_HIT");
   // Iterate over the notes of the melody:
   for (int thisNote = 0; thisNote < size; thisNote++) {
     // To calculate the note duration, take one second divided by the note type.
@@ -235,4 +245,5 @@ void makeNoise(int melody[], int noteDurations[], int size) {
     // Stop the tone playing:
     noTone(BUZZER_PIN);
   }
+  Serial.print("NOISE_END");
 }
