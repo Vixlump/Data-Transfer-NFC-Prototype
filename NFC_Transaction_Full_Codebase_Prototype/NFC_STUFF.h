@@ -99,7 +99,7 @@ void readCard() {
         
         mfrc522.PICC_HaltA();
         mfrc522.PCD_StopCrypto1();
-
+        Serial.println("NFC:ReadPass");
         break;
     }
 }

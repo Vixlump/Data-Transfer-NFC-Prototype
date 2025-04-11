@@ -58,8 +58,6 @@ void setup() {
 
 void loop() {
 
-  
-
   if (Serial.available()) {
         irSensorReading();
         char choice = Serial.read();
